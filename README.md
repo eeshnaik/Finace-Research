@@ -1,4 +1,4 @@
-# Finace-Research
+# Finance-Research
 A repository that features code written to conduct quantitative finance research. It is written in Python and uses yfinance API.
 
 Features 3 files, each to calculate the below statistics for all current S&P 500 stocks:
