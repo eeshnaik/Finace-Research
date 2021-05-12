@@ -1,0 +1,79 @@
+import yfinance as yf
+import csv
+import pandas as pd
+import numpy as np
+from pandas_datareader import data as pdr
+yf.pdr_override()
+
+companies = []
+with open("sp500.csv") as csvfile:
+    reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL) # change contents to floats
+    for row in reader: # each row is a list
+        companies.append(row[0])
+
+def write_csv(list1, name):
+
+    np.savetxt(name + ".csv",
+               list1,
+               delimiter=", ",
+               fmt='% s')
+def date_iterator(date):
+    if date[5:7] == '01':
+        return str(int(date[0:4]) - 1) + '-12' + date[7:]
+    else:
+        return date[0:5] + d_h(date[5:7]) + date[7:]
+def d_h(month):
+    num = int(month) - 1
+    if num >= 10:
+        return str(num)
+    else:
+        return '0' + str(num)
+
+def notvalid_date(stock, st):
+    en = st[0:8] + '04'
+    df = pdr.get_data_yahoo(stock, start= st, end= en)['Close']
+
+    return len(df) == 0
+
+i = 12
+st = '2010-12-01'
+en = '2020-12-01'
+
+while i > 0:
+
+    max_dds = []
+    print(st,en, str(i) + '-01')
+
+    for j in range(len(companies)):
+
+        if notvalid_date(companies[j], st):
+            df = pdr.get_data_yahoo(companies[j], end= en)['Adj Close']
+        else:
+            df = pdr.get_data_yahoo(companies[j], start= st, end= en)['Adj Close']
+
+        window = 2520
+        Roll_Max = df.rolling(window, min_periods=1).max()
+        Daily_Drawdown = df/Roll_Max - 1.0
+        Max_Daily_Drawdown = Daily_Drawdown.rolling(window, min_periods=1).min()
+        max_dds.append(Max_Daily_Drawdown.min()*-100)
+
+    write_csv(max_dds, name= str(i) + '-01')
+
+    st = date_iterator(st)
+    en = date_iterator(en)
+
+    i -= 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
