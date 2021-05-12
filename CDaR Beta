@@ -1,0 +1,110 @@
+import yfinance as yf
+import csv
+import pandas as pd
+import numpy as np
+from pandas_datareader import data as pdr
+yf.pdr_override()
+from statistics import mean
+
+companies = []
+with open("sp500.csv") as csvfile:
+    reader = csv.reader(csvfile, quoting=csv.QUOTE_ALL) # change contents to floats
+    for row in reader: # each row is a list
+        companies.append(row[0])
+
+def date_iterator(date):
+    if date[5:7] == '01':
+        return str(int(date[0:4]) - 1) + '-12' + date[7:]
+    else:
+        return date[0:5] + d_h(date[5:7]) + date[7:]
+def d_h(month):
+    num = int(month) - 1
+    if num >= 10:
+        return str(num)
+    else:
+        return '0' + str(num)
+def write_csv(list1, name):
+
+    np.savetxt(name + ".csv",
+               list1,
+               delimiter=", ",
+               fmt='% s')
+
+def notvalid_date(stock, st):
+    en = st[0:8] + '04'
+    df = pdr.get_data_yahoo(stock, start= st, end= en)['Close']
+
+    return len(df) == 0
+
+
+
+dfsp = pdr.get_data_yahoo('^GSPC', start='2010-03-01', end='2020-03-01')['Adj Close']
+window = 2520
+Roll_Max = dfsp.rolling(window, min_periods=1).max()
+stin = []
+for rm in Roll_Max:
+    stin.append((Roll_Max.values == rm).argmax())
+
+df = Roll_Max.index
+stdates = []
+for i in range(len(stin)):
+    stdates.append(df[stin[i]].strftime('%Y-%m-%d'))
+
+dd = pd.DataFrame({'dd': dfsp / Roll_Max - 1.0})
+
+dd['stdate'] = stdates
+enddate = dd.index.strftime('%Y-%m-%d')
+
+dd['enddate'] = dd.index.strftime('%Y-%m-%d')
+
+dd.sort_values(by='dd', inplace=True)
+dd['dd'] = dd['dd'] * -1
+dd10 = dd[:252]
+cdar_sp = dd10['dd'].mean()
+
+cdarb = []
+for i in range(len(companies)):
+
+    if notvalid_date(companies[i], st= '2010-03-01'):
+        cdarb.append('na')
+    else:
+
+        dfst = pdr.get_data_yahoo(companies[i], start='2010-03-01', end='2020-03-01')['Adj Close']
+
+        s_dd = []
+        for i in range(len(dd10['dd'])):
+            st1 = dd10['stdate'][i]
+            en1 = dd10['enddate'][i]
+            ret = (dfst.loc[st1] - dfst.loc[en1]) / dfst.loc[st1]
+
+            s_dd.append(ret)
+
+        cdar_stock = mean(s_dd)
+
+        beta = cdar_stock / cdar_sp
+        cdarb.append(beta)
+write_csv(cdarb, name='3-01-20')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
