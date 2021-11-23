@@ -1,0 +1,157 @@
+import yfinance as yf
+import csv
+import pandas as pd
+from collections import deque
+import numpy as np
+import math
+from sklearn.metrics import mean_squared_error
+from pmdarima import auto_arima
+from datetime import date
+from pandas_datareader import data as pdr
+yf.pdr_override()
+from statistics import mean
+import matplotlib.pyplot as plt
+import math
+from statsmodels.graphics.gofplots import qqplot
+import csv
+from scipy.stats import ks_2samp
+from scipy.stats import percentileofscore
+import scipy.stats as sci
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.stattools import grangercausalitytests
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.stattools import kpss
+from pandas.plotting import autocorrelation_plot
+from statsmodels.tsa.arima.model import ARIMA
+
+def write_csv(list1, name):
+
+    np.savetxt(name + ".csv",
+               list1,
+               delimiter=", ",
+               fmt='% s')
+
+def read_csvnum(name):
+    file = open(name, "r")
+    csv_reader = csv.reader(file)
+
+    list = []
+    for row in csv_reader:
+        n1 = float(row[0])
+        list.append(n1)
+
+    return list
+
+def read_csvstr(name):
+    file = open(name, "r")
+    csv_reader = csv.reader(file)
+
+    list = []
+    for row in csv_reader:
+        n1 = str(row[0])
+        list.append(n1)
+
+    return list
+
+def clean_list(data):
+    for i in range(len(data)):
+        if data[i] == 0.0:
+            data[i] = (data[i-1] + data[i+1]) / 2
+    return data
+
+def moving_avg(list):
+    ans = []
+
+
+    for i in range(len(list)):
+        if i < 2:
+            ans.append(np.nanmean(list[:i+1]))   # [1,2,3,4,5]
+        else:
+            ans.append(np.nanmean(list[i-2:i+1]))
+    return ans
+
+def percentile(list):
+    ans = []
+
+    list = abs(list)
+
+    for n1 in list:
+        ans.append(percentileofscore(list, n1))
+
+    return ans
+
+def remove_outliers(data):
+
+    for d1 in data:
+        if abs(d1-mean(data)) > 1.5*np.nanstd(data):
+            data.remove(d1)
+
+    return data
+
+def sum_squares(model, actual):
+
+    ans = 0
+
+    for i in range(len(actual)):
+
+        ans += (actual[i] - model[i]) ** 2
+
+    return ans
+
+def plot_model(model, actual):
+
+    plt.plot(model, label='model')
+    plt.plot(actual, label='actual')
+    #pp.title('Sum Square Error: %f' % sum_squares(model, actual))
+    plt.legend()
+    plt.show()
+
+def coeff_comb(t_space):
+
+    ans = []
+
+    for a in t_space:
+        for b in t_space:
+            ans.append([a, b])
+
+    return ans
+
+def get_data():
+
+    df = pdr.get_data_yahoo('AAPL', start='2021-01-01', end='2021-09-01', interval='1d')['Adj Close']
+
+    df.dropna(inplace=True)
+    df = df.reset_index()
+    df.rename(columns={'Adj Close': 'AAPL'}, inplace=True)
+
+    df.set_index(df['Date'], inplace=True)
+    del (df['Date'])
+
+    return df
+
+
+plt.style.use('dark_background')
+
+df = get_data()
+
+train=df[:150]
+test=df[149:]
+
+model=auto_arima(train,start_p=0,d=1,start_q=0,
+          max_p=5,max_d=5,max_q=5, start_P=0,
+          D=1, start_Q=0, max_P=5,max_D=5,
+          max_Q=5, m=12, seasonal=True,
+          error_action='warn',trace=True,
+          supress_warnings=True,stepwise=True,
+          random_state=20,n_fits=50)
+
+prediction = pd.DataFrame(model.predict(n_periods = 18),index=test.index)
+prediction.columns = ['predicted_values']
+plt.figure(figsize=(8,5))
+plt.plot(train,label="Training")
+plt.plot(test,label="Test")
+plt.plot(prediction,label="Predicted")
+plt.legend(loc = 'upper left')
+plt.savefig('SecondPrection.jpg')
+plt.show()
